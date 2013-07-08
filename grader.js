@@ -24,8 +24,12 @@ References:
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
+var rest = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
+var URL = 'http://startupify.herokuapp.com/';
+var HTMLFILE_TEMP = 'tmp.html';
+var checkJson;
 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
@@ -34,6 +38,16 @@ var assertFileExists = function(infile) {
         process.exit(1); // http://nodejs.org/api/process.html#process_process_exit_code
     }
     return instr;
+};
+
+var retrivePage = function(url) {
+    rest.get(url).on('complete', function(result) {
+        if (result instanceof Error) {
+           sys.puts('Error: ' + result.message);           
+        } else {
+            fs.writeFileSync(HTMLFILE_TEMP, result);
+        }
+    });
 };
 
 var cheerioHtmlFile = function(htmlfile) {
@@ -65,8 +79,14 @@ if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+        .option('-u, --url <file_url>', 'Url to bitstarter')
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
+    if (program.file) {
+      checkJson = checkHtmlFile(program.file, program.checks);
+    } else {
+      retrivePage(program.url);
+      checkJson = checkHtmlFile(HTMLFILE_TEMP, program.checks);
+    }
     var outJson = JSON.stringify(checkJson, null, 4);
     console.log(outJson);
 } else {
